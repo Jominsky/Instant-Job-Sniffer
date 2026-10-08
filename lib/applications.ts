@@ -11,7 +11,7 @@ export async function setApplicationStatus(userId: string, jobId: string, status
   const stamp = SUBMITTED.includes(status) && !existing?.dateApplied ? { dateApplied: new Date() } : {};
   const app = existing
     ? await prisma.application.update({ where: { id: existing.id }, data: { status, ...stamp, ...opts.extra } })
-    : await prisma.application.create({ data: { userId, jobId, status, ...stamp, ...(opts.extra as Prisma.ApplicationUncheckedCreateInput) } });
+        : await prisma.application.create({ data: { ...(opts.extra as Prisma.ApplicationUncheckedCreateInput), userId, jobId, status, ...stamp } });
   if (!existing || existing.status !== status) await prisma.applicationStatusChange.create({ data: { applicationId: app.id, status } });
   return app;
 }

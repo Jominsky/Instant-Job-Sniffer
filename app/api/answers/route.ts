@@ -3,7 +3,7 @@ import { z } from "zod";
 import { apiUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
-export const AnswerBody = z.object({
+const AnswerBody = z.object({
   question: z.string().trim().min(1).max(200),
   answer: z.string().trim().min(1).max(5000),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).default([]),
