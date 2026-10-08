@@ -1,0 +1,441 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>Job Intelligence Platform</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sidebar app shell (collapses to a top tab strip on phones), main column scrolls, job detail slides in from the right. */
+:root{
+  --bg:#eef1f5; --panel:#ffffff; --panel2:#f6f8fb; --line:#dde3ec; --fg:#14202e; --muted:#5d6b7e;
+  --accent:#0c6e63; --accent-fg:#ffffff; --accent-soft:#d9f0ec;
+  --good:#17803d; --good-soft:#dcf3e3; --warn:#a15c07; --warn-soft:#fbecd0; --bad:#b4281f; --bad-soft:#fbe0dd; --info:#2850c8; --info-soft:#dfe7fb;
+  --shadow:0 1px 2px rgba(20,32,46,.06),0 8px 24px rgba(20,32,46,.08);
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d141d; --panel:#141d29; --panel2:#182333; --line:#263446; --fg:#e6ecf4; --muted:#92a1b5;
+  --accent:#3fc4b0; --accent-fg:#062622; --accent-soft:#12413b;
+  --good:#58d27f; --good-soft:#143a24; --warn:#f0b34f; --warn-soft:#423010; --bad:#ff8b80; --bad-soft:#4a1d19; --info:#8ba8ff; --info-soft:#1b2a55;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d141d; --panel:#141d29; --panel2:#182333; --line:#263446; --fg:#e6ecf4; --muted:#92a1b5;
+  --accent:#3fc4b0; --accent-fg:#062622; --accent-soft:#12413b;
+  --good:#58d27f; --good-soft:#143a24; --warn:#f0b34f; --warn-soft:#423010; --bad:#ff8b80; --bad-soft:#4a1d19; --info:#8ba8ff; --info-soft:#1b2a55;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:12px;margin:0}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{max-width:1320px;margin:0 auto;height:100%;display:grid;grid-template-columns:216px minmax(0,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative}
+.side{background:var(--panel2);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:9px;padding:4px 8px 14px;font-weight:700;letter-spacing:-.01em}
+.logo{width:26px;height:26px;border-radius:7px;background:var(--accent);display:grid;place-items:center}
+.logo svg{width:16px;height:16px;stroke:var(--accent-fg);fill:none;stroke-width:2.2}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:0;background:none;text-align:left;color:var(--muted);font-weight:500;width:100%}
+.nav:hover{background:var(--line);color:var(--fg)}
+.nav[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;flex:none}
+.nav .n{margin-left:auto;font:500 11px var(--mono);background:var(--accent);color:var(--accent-fg);border-radius:99px;padding:1px 7px}
+.sidefoot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:10px 8px 0;color:var(--muted);font-size:12px}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top h1{font-size:18px;margin:0;letter-spacing:-.015em;flex:1 1 auto}
+.badge-demo{font:500 11px var(--mono);color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:3px 8px;white-space:nowrap}
+.content{padding:20px;overflow-y:auto;min-height:0;flex:1}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.grid{display:grid;gap:14px}
+.stats{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.stat .k{color:var(--muted);font-size:12px;font-weight:500}
+.stat .v{font-size:28px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.stat .s{font-size:12px;color:var(--muted)}
+.two{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+h2{font-size:13px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer;background:none;border-inline:0;border-bottom:0;width:100%;text-align:left}
+.row:first-of-type{border-top:0}
+.row:hover .t{color:var(--accent)}
+.fit{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font:600 15px var(--mono)}
+.fit.hi{background:var(--good-soft);color:var(--good)} .fit.mid{background:var(--info-soft);color:var(--info)} .fit.lo{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.t{font-weight:600} .sub{color:var(--muted);font-size:12.5px}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{font-size:11.5px;border-radius:6px;padding:1px 7px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.new{background:var(--accent-soft);color:var(--accent);border-color:transparent;font-weight:600}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.age{font:500 12px var(--mono);color:var(--muted);text-align:right;white-space:nowrap}
+.age.fresh{color:var(--good)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.toolbar input[type=search],.toolbar select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0}
+.toolbar input[type=search]{flex:1 1 200px}
+.drawer{position:absolute;inset:0 0 0 auto;width:min(480px,100%);background:var(--panel);border-left:1px solid var(--line);box-shadow:var(--shadow);transform:translateX(102%);transition:transform .22s ease;display:flex;flex-direction:column;z-index:5}
+.drawer.open{transform:none}
+.drawer header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.drawer .body{padding:16px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+.x{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--muted)}
+.bar{display:grid;grid-template-columns:96px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:12.5px;margin:6px 0}
+.bar .track{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.bar .fill{height:100%;background:var(--accent);border-radius:99px}
+.bar .fill.alt{background:var(--info)}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.kanban{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(210px,1fr);gap:12px;overflow-x:auto;padding-bottom:8px}
+.col{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:220px;display:flex;flex-direction:column;gap:8px}
+.col h3{margin:0;font-size:12.5px;display:flex;justify-content:space-between;color:var(--muted)}
+.kc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 10px;display:flex;flex-direction:column;gap:6px}
+.kc select{border:1px solid var(--line);background:var(--panel2);border-radius:6px;padding:2px 4px;font-size:12px}
+.alert{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.alert:first-of-type{border-top:0}
+.switch{width:36px;height:20px;border-radius:99px;border:0;background:var(--line);position:relative;flex:none;margin-top:2px}
+.switch::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.switch[aria-pressed="true"]{background:var(--accent)} .switch[aria-pressed="true"]::after{left:18px}
+.form{display:grid;gap:12px}
+.form label{display:grid;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+.form input[type=text],.form select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.checks{display:flex;gap:12px;flex-wrap:wrap;color:var(--fg)}
+.checks label{display:flex;flex-direction:row;gap:5px;align-items:center;color:var(--fg)}
+.toast{position:fixed;right:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:11px 16px;border-radius:10px;box-shadow:var(--shadow);max-width:min(380px,calc(100% - 32px));z-index:20;font-weight:500}
+.hist{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:6px}
+.hist div{flex:1;background:var(--accent);border-radius:4px 4px 0 0;position:relative;min-height:2px;opacity:.85}
+.hist span{position:absolute;top:100%;left:0;right:0;text-align:center;font:11px var(--mono);color:var(--muted);padding-top:3px}
+.spark{width:100%;height:70px}
+.health{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-right:6px}
+.dot.bad{background:var(--bad)}
+.empty{color:var(--muted);padding:24px;text-align:center}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .side{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px;gap:4px}
+  .brand,.sidefoot{display:none} .nav{width:auto;white-space:nowrap}
+  .two{grid-template-columns:minmax(0,1fr)} .content{padding:14px} .top{padding:10px 14px}
+}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+</style>
+
+<div class="app" id="app">
+  <aside class="side" id="side"></aside>
+  <section class="main">
+    <div class="top"><h1 id="title"></h1><span class="badge-demo">EXAMPLE DATA · PREVIEW</span><button class="btn sm" id="sim">Simulate new posting</button></div>
+    <div class="content" id="content"></div>
+  </section>
+  <aside class="drawer" id="drawer" aria-label="Job details"></aside>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- search parser: compiled from lib/searchQuery.ts, the same code the real app runs ---------- */
+/* compiled from lib/searchQuery.ts (the same code the app uses) */
+const TECH_VOCAB = ["Python", "Java", "C++", "C#", "C", "Rust", "Go", "Golang", "Kotlin", "Swift", "Scala", "TypeScript", "JavaScript", "React",
+  "Node.js", "SQL", "PostgreSQL", "MySQL", "Redis", "Kafka", "Spark", "Hadoop", "AWS", "GCP", "Azure", "Kubernetes", "Docker", "Terraform", "Linux",
+  "TCP/IP", "networking", "distributed systems", "multithreading", "low latency", "PyTorch", "TensorFlow", "CUDA", "OCaml", "Haskell", "KDB", "Pandas",
+  "NumPy", "machine learning", "deep learning", "FPGA", "GraphQL", "gRPC"];
+
+/** Turns a typed search like "quant internships chicago posted today" into structured filters + leftover free-text terms.
+ *  Pure and dependency-free so it can be unit-tested. Anything it does not recognise stays a free-text term, so a query never
+ *  silently loses words. Filters set explicitly in the filter bar always win over parsed ones (see lib/jobs.ts). */
+                            
+                  
+            
+                                                                      
+                                                  
+                                                    
+                                                             
+                                                                  
+                                                                         
+    
+                                                                                          
+                                                                                   
+  
+
+const SWE_FAMILY = ["SWE", "BACKEND", "FRONTEND", "FULL_STACK", "INFRASTRUCTURE", "DISTRIBUTED_SYSTEMS"];
+const ROLE_PATTERNS                               = [   // most specific first; each match is consumed
+  [/\bquant(?:itative)?\s+(?:developer|dev|engineer)s?\b/g, ["QUANT_DEVELOPER"], "Quant developer"],
+  [/\bquant(?:itative)?\s+research(?:er)?s?\b/g, ["QUANT_RESEARCH"], "Quant research"],
+  [/\bquant(?:itative)?\s+trad(?:ing|er)s?\b/g, ["QUANT_TRADING"], "Quant trading"],
+  [/\bquant(?:itative)?\b/g, ["QUANT_DEVELOPER", "QUANT_RESEARCH", "QUANT_TRADING"], "Quant (all)"],
+  [/\b(?:machine learning|ml|ai)\b/g, ["ML_AI"], "ML / AI"],
+  [/\bdata\s+engineer(?:ing|s)?\b/g, ["DATA_ENGINEERING"], "Data engineering"],
+  [/\b(?:dev\s?ops|sre)\b/g, ["DEVOPS_SRE"], "DevOps / SRE"],
+  [/\bdistributed systems\b/g, ["DISTRIBUTED_SYSTEMS"], "Distributed systems"],
+  [/\binfra(?:structure)?\b/g, ["INFRASTRUCTURE"], "Infrastructure"],
+  [/\bback-?end\b/g, ["BACKEND"], "Backend"],
+  [/\bfront-?end\b/g, ["FRONTEND"], "Frontend"],
+  [/\bfull[- ]?stack\b/g, ["FULL_STACK"], "Full stack"],
+  [/\bsecurity\b/g, ["SECURITY"], "Security"],
+  [/\b(?:swe|software\s+(?:engineer(?:ing|s)?|developer|development))\b/g, SWE_FAMILY, "Software engineering"],
+];
+const LOCATIONS                     = [
+  [/\b(?:nyc|new york(?: city)?)\b/g, "New York"], [/\b(?:sf|san francisco|bay area)\b/g, "San Francisco"],
+  [/\bchicago\b/g, "Chicago"], [/\b(?:philly|philadelphia)\b/g, "Philadelphia"], [/\bboston\b/g, "Boston"],
+  [/\bseattle\b/g, "Seattle"], [/\baustin\b/g, "Austin"], [/\blondon\b/g, "London"], [/\b(?:washington dc|dc)\b/g, "Washington"],
+];
+const STOP = new Set(["jobs", "job", "roles", "role", "positions", "position", "openings", "opening", "requiring", "require", "requires", "with", "in", "at",
+  "for", "the", "a", "an", "and", "of", "from", "new", "posted", "discovered", "find", "show", "me", "that", "are", "is", "open", "hiring", "companies", "company", "any"]);
+
+const WINDOWS                             = [
+  [/\b(?:in the |within the )?last\s+(\d+)\s*(minutes?|mins?|hours?|hrs?|days?)\b/, -1, ""],   // computed below
+  [/\blast\s+hour\b/, 60, "last hour"], [/\b(?:last\s+24\s*(?:hours|h)|past day)\b/, 1440, "last 24h"], [/\blast\s+week\b/, 10080, "last 7 days"],
+  [/\bthis\s+week\b/, 10080, "last 7 days"], [/\bthis\s+month\b/, 43200, "last 30 days"], [/\btoday\b/, 1440, "last 24h"],
+];
+
+
+function parseSearch(input                           )               {
+  const out               = { terms: [], filters: {}, wantsCompanies: false, explained: [] };
+  if (!input?.trim()) return out;
+  const quoted           = [];
+  let s = " " + input.toLowerCase().replace(/"([^"]+)"/g, (_, p        ) => { quoted.push(p.trim()); return " "; }) + " ";
+  const take = (re        , fn                               ) => { const m = s.match(re); if (m) { fn(m); s = s.replace(re, " "); return true; } return false; };
+
+  // 1. time windows: "posted today" / "discovered this week" / bare "today"
+  const kind = /\bposted\b/.test(s) ? "postedWithin" : "discoveredWithin";
+  for (const [re, minutes, label] of WINDOWS) {
+    if (take(re, (m) => {
+      let mins = minutes, lab = label;
+      if (minutes === -1) { const n = Number(m[1]); const u = m[2][0]; mins = u === "d" ? n * 1440 : u === "h" ? n * 60 : n; lab = `last ${n} ${m[2]}`; }
+      out.filters[kind] = String(mins); out.explained.push(`${kind === "postedWithin" ? "Posted" : "Discovered"}: ${lab}`);
+    })) break;
+  }
+  // 2. season / year ("spring" only with a year because "Spring" is also a Java framework)
+  take(/\b(summer|fall|autumn|winter|spring)\s+(20[2-3]\d)\b/, (m) => { out.filters.season = cap(m[1] === "autumn" ? "fall" : m[1]); out.filters.year = m[2]; out.explained.push(`Season: ${out.filters.season} ${m[2]}`); });
+  if (!out.filters.season) take(/\b(summer|fall|winter)\b/, (m) => { out.filters.season = cap(m[1]); out.explained.push(`Season: ${out.filters.season}`); });
+  if (!out.filters.year) take(/\b(20[2-3]\d)\b/, (m) => { out.filters.year = m[1]; out.explained.push(`Year: ${m[1]}`); });
+  // 3. experience level
+  if (take(/\bnew[- ]?grads?\b/, () => { out.filters.exp = "NEW_GRAD"; out.explained.push("New grad"); })) { /* done */ }
+  else if (take(/\bentry[- ]level\b/, () => { out.filters.exp = "ENTRY_LEVEL"; out.explained.push("Entry level"); })) { /* done */ }
+  else take(/\b(?:internships?|interns?)\b/, () => { out.filters.exp = "INTERNSHIP"; out.explained.push("Internship"); });
+  // 4. roles (accumulate)
+  const roles           = [];
+  for (const [re, cats, label] of ROLE_PATTERNS) take(re, () => { for (const c of cats) if (!roles.includes(c)) roles.push(c); out.explained.push(`Role: ${label}`); });
+  if (roles.length) out.filters.role = roles.join(",");
+  // 5. remote, locations
+  take(/\bremote\b/, () => { out.filters.remote = "1"; out.explained.push("Remote"); });
+  const locs           = [];
+  for (const [re, name] of LOCATIONS) take(re, () => { if (!locs.includes(name)) locs.push(name); });
+  if (locs.length) { out.filters.location = locs.join("|"); out.explained.push(`Location: ${locs.join(" or ")}`); }
+  // 6. "companies ..." asks for a per-company summary
+  out.wantsCompanies = /\bcompanies\b/.test(s);
+
+  // 7. leftover tokens: known technologies become an ALL-of filter, stop words drop, the rest stay free text
+  const techByLower = new Map(TECH_VOCAB.map((t) => [t.toLowerCase(), t]));
+  const techs           = [];
+  const terms           = [];
+  for (const raw of s.split(/\s+/).filter(Boolean)) {
+    const tok = raw.replace(/^[^\w+#.]+|[^\w+#]+$/g, "");   // keep C++, C#, node.js, .net inside the token
+    if (!tok) continue;
+    const tech = techByLower.get(tok);
+    if (tech && !(tech === "Go" && raw !== tok) ) { if (!techs.includes(tech)) techs.push(tech); continue; }
+    if (STOP.has(tok)) continue;
+    terms.push(tok);
+  }
+  for (const q of quoted) if (q) terms.push(q);
+  if (techs.length) { out.filters.techAll = techs.join(","); out.explained.push(`Mentions: ${techs.join(", ")}`); }
+  out.terms = terms.slice(0, 8);
+  return out;
+}
+
+function cap(w        ) { return w[0].toUpperCase() + w.slice(1); }
+
+/* ---------- example data (fictional companies; mirrors the real Job / Application schema) ---------- */
+const COMP = {
+  northwind:{n:"Northwind Capital",cat:"Quant fund",ats:"Greenhouse"}, halcyon:{n:"Halcyon Trading",cat:"Prop trading",ats:"Lever"},
+  ledgerly:{n:"Ledgerly",cat:"Fintech",ats:"Ashby"}, orbital:{n:"Orbital Systems",cat:"Big tech",ats:"Workday"},
+  meridian:{n:"Meridian Labs",cat:"Startup",ats:"Ashby"}, tessera:{n:"Tessera Markets",cat:"Quant fund",ats:"Greenhouse"},
+  kestrel:{n:"Kestrel Health",cat:"Healthcare",ats:"SmartRecruiters"}, brightline:{n:"Brightline Payments",cat:"Fintech",ats:"Lever"}
+};
+const J=(id,co,title,loc,lvl,role,min,fit,season,mode,tech,why,concerns,dl,comp,inferred)=>({id,co,title,loc,lvl,role,min,fit,season,mode,tech,why,concerns,dl,comp,inferred:inferred||[]});
+let JOBS=[
+ J(1,"northwind","Quantitative Developer Intern","Chicago, IL","Internship","Quant Developer",6,96,"Summer 2027","Onsite",["C++","Python","Linux"],["Role matches your target: Quant Developer","Skills overlap: C++, Python, Linux (3 of 4 required)","Graduation 2028 fits a Summer 2027 internship","Location Chicago is on your list"],[],"Nov 14","$11,500 / month",[]),
+ J(2,"halcyon","Software Engineer Intern, Trading Systems","New York, NY","Internship","SWE",22,93,"Summer 2027","Onsite",["C++","Python","Rust"],["Role matches your target: SWE","Skills overlap: C++, Python","Location New York is on your list"],["Rust listed as preferred; not on your resume"],"Oct 31","$10,800 / month",[]),
+ J(3,"tessera","Quantitative Research Intern","New York, NY","Internship","Quant Research",47,88,"Summer 2027","Onsite",["Python","Statistics","R"],["Role family adjacent to your targets","Skills overlap: Python, Statistics","Posted within the last hour"],["Asks for a PhD-track or strong stats coursework"],null,"Not stated",["Season inferred from description"]),
+ J(4,"ledgerly","Backend Engineer Intern","Remote (US)","Internship","SWE",95,84,"Summer 2027","Remote",["Go","PostgreSQL","Kubernetes"],["Role matches your target: SWE","Remote work is allowed"],["Go and Kubernetes not on your resume","No stated deadline"],null,"$48 / hour",[]),
+ J(5,"orbital","Software Engineering Intern, Infrastructure","Seattle, WA","Internship","SWE",140,81,"Summer 2027","Hybrid",["C++","Linux","Distributed systems"],["Skills overlap: C++, Linux","Large employer, high application volume"],["Location Seattle not on your list"],"Dec 1","$9,400 / month",[]),
+ J(6,"meridian","Machine Learning Engineer Intern","San Francisco, CA","Internship","ML",210,76,"Summer 2027","Onsite",["Python","PyTorch"],["Skills overlap: Python"],["Location San Francisco not on your list","PyTorch not on your resume"],null,"Not stated",["Season inferred from posting date"]),
+ J(7,"brightline","New Grad Software Engineer","Austin, TX","New grad","SWE",320,58,"2027 start","Onsite",["Java","Kafka","SQL"],["Role matches your target: SWE"],["New grad role; you are targeting internships","Java not on your resume"],null,"$135k–$155k",[]),
+ J(8,"northwind","Quantitative Trader Intern","Chicago, IL","Internship","Quant Trader",410,90,"Summer 2027","Onsite",["Probability","Python","Market making"],["Role matches your target","Location Chicago is on your list"],["Strong probability screen expected"],"Nov 14","$11,500 / month",[]),
+ J(9,"kestrel","Data Engineering Intern","Boston, MA","Internship","Data",600,69,"Summer 2027","Hybrid",["Python","SQL","Airflow"],["Skills overlap: Python, SQL"],["Healthcare domain; outside your preferred categories"],null,"$38 / hour",[]),
+ J(10,"halcyon","Quantitative Developer Intern","Chicago, IL","Internship","Quant Developer",780,94,"Summer 2027","Onsite",["C++","Python","FPGA"],["Role matches your target: Quant Developer","Skills overlap: C++, Python","Location Chicago is on your list"],["FPGA exposure preferred"],"Nov 7","$11,000 / month",[]),
+ J(11,"tessera","Software Engineer Intern, Research Platform","New York, NY","Internship","SWE",1100,87,"Summer 2027","Onsite",["Python","C++","Linux"],["Role matches your target: SWE","Skills overlap: Python, C++, Linux"],[],"Dec 15","$10,200 / month",[]),
+ J(12,"orbital","Senior Software Engineer, Platform","Mountain View, CA","Senior","SWE",1500,22,"","Hybrid",["Java","Kubernetes"],["Excluded: senior-level title"],["Excluded by your rules: senior title"],null,"$210k–$260k",[]),
+];
+const STAGES=["Saved","Applied","Online assessment","Interview","Offer","Rejected"];
+let APPS={2:{st:"Interview",ref:"Maya Chen (referral)",next:"Final round Oct 19"},1:{st:"Online assessment",ref:"",next:"OA due Oct 14"},10:{st:"Applied",ref:"Dev Patel (alumni)",next:""},5:{st:"Saved",ref:"",next:""},9:{st:"Rejected",ref:"",next:""},3:{st:"Saved",ref:"",next:""}};
+let ALERTS=[
+ {id:1,name:"Strong quant intern matches",on:true,min:88,lvl:"Internship",chan:["Browser","Discord","SMS"],freq:"Immediate",sent:14},
+ {id:2,name:"Any SWE internship, daily digest",on:true,min:75,lvl:"Internship",chan:["Email"],freq:"Morning digest",sent:6},
+ {id:3,name:"Remote roles",on:false,min:80,lvl:"Any",chan:["Browser"],freq:"Hourly",sent:0},
+];
+const state={saves:[{name:"Quant interns, Chicago",q:"quant internships chicago"}],prio:{1:"HIGH"},view:"dashboard",q:"",lvl:"",role:"",min:0,mode:"",sel:null,saved:new Set([5,3]),newIds:new Set([1,2,3])};
+const NAV=[["dashboard","Dashboard","M3 12l9-8 9 8M5 10v10h14V10"],["jobs","Jobs","M4 7h16v12H4zM9 7V4h6v3"],["fresh","Just opened","M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"],["alerts","Alerts","M6 16V11a6 6 0 1112 0v5l2 2H4zM10 20a2 2 0 004 0"],["apps","Applications","M4 5h4v14H4zM10 5h4v9h-4zM16 5h4v6h-4z"],["analytics","Analytics","M4 20V10M10 20V4M16 20v-8M22 20H2"]];
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fitCls=f=>f>=85?"hi":f>=70?"mid":"lo";
+const ago=m=>m<60?m+"m ago":m<1440?Math.round(m/60)+"h ago":Math.round(m/1440)+"d ago";
+const job=id=>JOBS.find(j=>j.id===id);
+const byDeadline=(a,b)=>Date.parse(a.dl+", 2026")-Date.parse(b.dl+", 2026");
+const visible=()=>JOBS.filter(j=>j.fit>=40);
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,3600)}
+function jobRow(j,showAge){
+  const c=COMP[j.co];
+  return `<button class="row" data-open="${j.id}"><div class="fit ${fitCls(j.fit)}">${j.fit}</div>
+   <div style="min-width:0"><div class="t">${esc(j.title)}</div><div class="sub">${esc(c.n)} · ${esc(j.loc)} · ${esc(j.season||"—")}</div>
+   <div class="meta">${state.newIds.has(j.id)?'<span class="chip new">New</span>':""}${state.prio[j.id]==="HIGH"?'<span class="chip warn">High priority</span>':state.prio[j.id]==="LOW"?'<span class="chip">Low priority</span>':""}${j.dl?`<span class="chip warn">Deadline ${esc(j.dl)}</span>`:""}<span class="chip">${esc(j.mode)}</span>${j.tech.slice(0,3).map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div></div>
+   <div class="age ${j.min<30?"fresh":""}">${showAge!==false?ago(j.min):""}</div></button>`;
+}
+
+/* ---------- views ---------- */
+function dashboard(){
+  const list=visible(), strong=list.filter(j=>j.fit>=85), fresh=list.filter(j=>j.min<=1440), deadl=list.filter(j=>j.dl);
+  const pipeline=Object.values(APPS).filter(a=>!["Saved","Rejected"].includes(a.st)).length;
+  const days=[3,5,4,9,6,12,8,11,7,14,10,15,9,13]; const mx=Math.max(...days);
+  const pts=days.map((d,i)=>`${(i/(days.length-1))*300},${64-(d/mx)*56}`).join(" ");
+  return `<div class="grid stats">
+   <div class="card stat"><div class="k">New in last 24h</div><div class="v mono">${fresh.length}</div><div class="s">across 214 monitored companies</div></div>
+   <div class="card stat"><div class="k">Strong matches (85+)</div><div class="v mono">${strong.length}</div><div class="s">${strong.filter(j=>!APPS[j.id]).length} not yet tracked</div></div>
+   <div class="card stat"><div class="k">Closing soon</div><div class="v mono">${deadl.length}</div><div class="s">next: ${esc([...deadl].sort(byDeadline)[0]?.dl||"none")}</div></div>
+   <div class="card stat"><div class="k">In pipeline</div><div class="v mono">${pipeline}</div><div class="s">applied, assessment, interview, offer</div></div></div>
+  <div class="grid two"><div class="card"><h2>Top matches right now</h2>${[...list].sort((a,b)=>b.fit-a.fit).slice(0,6).map(j=>jobRow(j)).join("")}</div>
+   <div class="grid" style="align-content:start">
+    <div class="card"><h2>Discovered per day</h2><svg class="spark" viewBox="0 0 300 70" preserveAspectRatio="none" role="img" aria-label="Jobs discovered per day, last 14 days, rising"><polyline points="${pts} 300,70 0,70" fill="var(--accent-soft)" stroke="none"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/></svg><div class="sub">Last 14 days · today <b class="mono">${days.at(-1)}</b></div></div>
+    <div class="card"><h2>Upcoming deadlines</h2>${[...deadl].sort(byDeadline).slice(0,4).map(j=>`<div class="alert"><span class="chip warn mono">${esc(j.dl)}</span><div><div class="t">${esc(j.title)}</div><div class="sub">${esc(COMP[j.co].n)}</div></div></div>`).join("")}</div>
+    <div class="card"><h2>Scanner health</h2><div class="health"><span><i class="dot"></i>211 healthy</span><span><i class="dot bad"></i>3 failing</span><span>Last full pass 4m ago</span></div><div class="sub" style="margin-top:8px">Failing boards are backed off and retried; open jobs are never closed after a failed scan.</div></div>
+   </div></div>`;
+}
+const ROLEMAP={SWE:["SWE"],BACKEND:["SWE"],FRONTEND:["SWE"],FULL_STACK:["SWE"],INFRASTRUCTURE:["SWE"],DISTRIBUTED_SYSTEMS:["SWE"],QUANT_DEVELOPER:["Quant Developer"],QUANT_RESEARCH:["Quant Research"],QUANT_TRADING:["Quant Trader"],ML_AI:["ML"],DATA_ENGINEERING:["Data"]};
+const LVLMAP={INTERNSHIP:"Internship",NEW_GRAD:"New grad"};
+function matchParsed(j,p){
+  const f=p.filters, c=COMP[j.co];
+  if(f.role&&!f.role.split(",").some(r=>(ROLEMAP[r]||[]).includes(j.role)))return false;
+  if(f.exp&&LVLMAP[f.exp]!==j.lvl)return false;
+  if(f.season&&!j.season.startsWith(f.season))return false;
+  if(f.year&&!j.season.includes(f.year))return false;
+  if(f.remote&&j.mode!=="Remote")return false;
+  if(f.location&&!f.location.split("|").some(l=>j.loc.toLowerCase().includes(l.toLowerCase())))return false;
+  if(f.postedWithin&&j.min>+f.postedWithin)return false;
+  if(f.discoveredWithin&&j.min>+f.discoveredWithin)return false;
+  if(f.techAll&&!f.techAll.split(",").every(t=>j.tech.some(x=>x.toLowerCase()===t.toLowerCase())))return false;
+  return p.terms.every(t=>(j.title+" "+c.n+" "+j.loc+" "+j.tech.join(" ")).toLowerCase().includes(t.toLowerCase()));
+}
+function jobsView(){
+  const P=parseSearch(state.q);
+  const L=visible().filter(j=>matchParsed(j,P)&&(!state.lvl||j.lvl===state.lvl)&&(!state.role||j.role===state.role)&&(!state.mode||j.mode===state.mode)&&j.fit>=state.min).sort((a,b)=>b.fit-a.fit);
+  const opt=(arr,v)=>arr.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("");
+  const roles=[...new Set(JOBS.map(j=>j.role))];
+  return `<div class="toolbar"><input type="search" id="q" placeholder='Try "quant internships chicago posted today"' value="${esc(state.q)}" aria-label="Search jobs">
+   <select id="lvl" aria-label="Level"><option value="">All levels</option>${opt(["Internship","New grad","Senior"],state.lvl)}</select>
+   <select id="role" aria-label="Role"><option value="">All roles</option>${opt(roles,state.role)}</select>
+   <select id="mode" aria-label="Work mode"><option value="">Any mode</option>${opt(["Onsite","Hybrid","Remote"],state.mode)}</select>
+   <select id="min" aria-label="Minimum fit">${[0,70,80,85,90].map(v=>`<option value="${v}" ${v===state.min?"selected":""}>${v?"Fit ≥ "+v:"Any fit"}</option>`).join("")}</select></div>
+   ${state.q.trim()?`<div class="meta" style="margin:-4px 0 12px"><span class="sub">Understood as:</span>${P.explained.map(e=>`<span class="chip good">${esc(e)}</span>`).join("")}${P.terms.map(t=>`<span class="chip">text: ${esc(t)}</span>`).join("")}${P.explained.length||P.terms.length?"":'<span class="sub">nothing yet</span>'}</div>`:""}
+   <div class="meta" style="margin:0 0 12px"><span class="sub">Saved searches:</span>${state.saves.map((x,i)=>`<span class="chip new"><button data-runsave="${i}" style="border:0;background:none;color:inherit;padding:0;font:inherit">${esc(x.name)}</button> <button data-delsave="${i}" aria-label="Delete saved search ${esc(x.name)}" style="border:0;background:none;color:inherit;padding:0">×</button></span>`).join("")||'<span class="sub">none</span>'}${state.q.trim()?'<button class="btn sm" data-savesearch>Save this search</button>':""}</div>
+   <div class="card">${L.length?L.map(j=>jobRow(j)).join(""):'<div class="empty">No jobs match these filters.</div>'}</div>
+   <p class="sub" style="margin-top:10px">Roles excluded by your rules (senior titles, for example) are hidden here and listed under Settings → Excluded, with the reason.</p>`;
+}
+function freshView(){
+  const L=[...visible()].sort((a,b)=>a.min-b.min).slice(0,8);
+  return `<div class="card"><h2>Newest postings first</h2>${L.map(j=>jobRow(j)).join("")}</div>
+  <p class="sub" style="margin-top:10px">Ranked by how recently the employer published the role. Application counts are never shown by employers, so early applications are the only lever: this view exists to put the best-fit new roles in front of you first.</p>`;
+}
+function alertsView(){
+  const matches=(a)=>visible().filter(j=>j.fit>=a.min&&(a.lvl==="Any"||j.lvl===a.lvl)).length;
+  return `<div class="grid two"><div class="card"><h2>Your alerts</h2>${ALERTS.map(a=>`<div class="alert"><button class="switch" data-tog="${a.id}" aria-pressed="${a.on}" aria-label="Toggle ${esc(a.name)}"></button>
+    <div style="min-width:0;flex:1"><div class="t">${esc(a.name)}</div><div class="sub">Fit ≥ ${a.min} · ${esc(a.lvl)} · ${esc(a.freq)}</div>
+    <div class="meta">${a.chan.map(c=>`<span class="chip">${esc(c)}</span>`).join("")}</div></div>
+    <div class="age"><b class="mono">${matches(a)}</b> match now<br>${a.sent} sent</div></div>`).join("")}</div>
+   <div class="card"><h2>New alert</h2><form class="form" id="newAlert">
+    <label>Name<input type="text" id="an" value="Chicago quant roles" ></label>
+    <label>Minimum fit: <b class="mono" id="amv">85</b><input type="range" id="am" min="50" max="100" value="85"></label>
+    <label>Level<select id="al"><option>Internship</option><option>New grad</option><option>Any</option></select></label>
+    <label>Frequency<select id="af"><option>Immediate</option><option>Hourly</option><option>Morning digest</option><option>Evening digest</option></select></label>
+    <div class="checks" role="group" aria-label="Channels"><label><input type="checkbox" value="Browser" checked>Browser</label><label><input type="checkbox" value="Email">Email</label><label><input type="checkbox" value="Discord">Discord</label><label><input type="checkbox" value="Slack">Slack</label><label><input type="checkbox" value="SMS">SMS</label></div>
+    <div class="sub" id="apv"></div><button class="btn primary" type="submit">Create alert</button></form>
+    <p class="sub" style="margin-top:10px">Each alert fires at most once per job. If many roles open at once they are rolled into one message.</p></div></div>`;
+}
+function appsView(){
+  return `<div class="kanban">${STAGES.map(s=>{const items=Object.entries(APPS).filter(([,a])=>a.st===s);
+   return `<div class="col"><h3><span>${s}</span><span class="mono">${items.length}</span></h3>${items.map(([id,a])=>{const j=job(+id);return `<div class="kc"><button class="t" data-open="${id}" style="border:0;background:none;padding:0;text-align:left">${esc(j.title)}</button>
+    <div class="sub">${esc(COMP[j.co].n)}</div>${a.ref?`<span class="chip good">${esc(a.ref)}</span>`:""}${a.next?`<span class="chip warn">${esc(a.next)}</span>`:""}
+    <select data-move="${id}" aria-label="Move ${esc(j.title)}">${STAGES.map(x=>`<option ${x===s?"selected":""}>${x}</option>`).join("")}</select></div>`}).join("")||'<div class="sub">Empty</div>'}</div>`}).join("")}</div>`;
+}
+function analyticsView(){
+  const reached=s=>Object.values(APPS).filter(a=>STAGES.indexOf(a.st)>=STAGES.indexOf(s)&&a.st!=="Rejected").length+(s==="Saved"?Object.values(APPS).filter(a=>a.st==="Rejected").length:0);
+  const base=Math.max(reached("Saved"),1);
+  const roles={};visible().forEach(j=>roles[j.role]=(roles[j.role]||0)+1);
+  const buckets=[[50,60],[60,70],[70,80],[80,90],[90,101]].map(([a,b])=>[a,visible().filter(j=>j.fit>=a&&j.fit<b).length]);
+  const hm=Math.max(...buckets.map(b=>b[1]),1);
+  return `<div class="grid two"><div class="card"><h2>Application funnel (ever reached)</h2>${["Saved","Applied","Online assessment","Interview","Offer"].map(s=>`<div class="bar"><span>${s}</span><div class="track"><div class="fill" style="width:${reached(s)/base*100}%"></div></div><b class="mono">${reached(s)}</b></div>`).join("")}
+    <div class="sub" style="margin-top:8px">Counts use status history, so a rejected application still counts for the stages it passed.</div></div>
+   <div class="card"><h2>Open roles by category</h2>${Object.entries(roles).sort((a,b)=>b[1]-a[1]).map(([r,n])=>`<div class="bar"><span>${esc(r)}</span><div class="track"><div class="fill alt" style="width:${n/Math.max(...Object.values(roles))*100}%"></div></div><b class="mono">${n}</b></div>`).join("")}</div>
+   <div class="card"><h2>Fit score distribution</h2><div class="hist" style="margin-bottom:22px">${buckets.map(([a,n])=>`<div style="height:${Math.max(n/hm*100,2)}%" title="${n} roles"><span>${a}–${a+9}</span></div>`).join("")}</div></div>
+   <div class="card"><h2>Response times</h2><div class="bar"><span>Applied → OA</span><div class="track"><div class="fill" style="width:35%"></div></div><b class="mono">4d</b></div><div class="bar"><span>OA → interview</span><div class="track"><div class="fill" style="width:55%"></div></div><b class="mono">9d</b></div><div class="sub">Example figures. Real values are computed from your status history.</div></div></div>`;
+}
+const VIEWS={dashboard:["Dashboard",dashboard],jobs:["Jobs",jobsView],fresh:["Just opened",freshView],alerts:["Alerts",alertsView],apps:["Applications",appsView],analytics:["Analytics",analyticsView]};
+
+/* ---------- detail drawer ---------- */
+function drawer(){
+  const d=$("#drawer"); const j=state.sel&&job(state.sel);
+  d.classList.toggle("open",!!j); if(!j){d.innerHTML="";return}
+  const c=COMP[j.co], a=APPS[j.id];
+  const comp=[["Role",Math.min(100,j.fit+4)],["Skills",Math.max(30,j.fit-6)],["Location",j.loc.includes("Chicago")||j.loc.includes("New York")?100:55],["Timing",j.season?90:40],["Company",j.fit>85?88:65],["Freshness",Math.max(30,100-Math.round(j.min/12))]];
+  d.innerHTML=`<header><div class="fit ${fitCls(j.fit)}">${j.fit}</div><div style="min-width:0"><div class="t" style="font-size:16px">${esc(j.title)}</div><div class="sub">${esc(c.n)} · ${esc(c.cat)} · via ${esc(c.ats)}</div></div><button class="x" data-close aria-label="Close details">×</button></header>
+  <div class="body"><div class="meta"><span class="chip">${esc(j.loc)}</span><span class="chip">${esc(j.mode)}</span><span class="chip">${esc(j.season||"Season not stated")}</span><span class="chip">${esc(j.comp)}</span>${j.dl?`<span class="chip warn">Deadline ${esc(j.dl)}</span>`:""}<span class="chip">Posted ${ago(j.min)}</span></div>
+   <div><h2>Why it ranks here</h2>${comp.map(([k,v])=>`<div class="bar"><span>${k}</span><div class="track"><div class="fill" style="width:${v}%"></div></div><b class="mono">${v}</b></div>`).join("")}</div>
+   <div><h2>Reasons</h2><ul class="plain">${j.why.map(w=>`<li>${esc(w)}</li>`).join("")}</ul></div>
+   ${j.concerns.length?`<div><h2>Concerns (lower rank, not hidden)</h2><ul class="plain">${j.concerns.map(w=>`<li>${esc(w)}</li>`).join("")}</ul></div>`:""}
+   <div><h2>Data source</h2><div class="sub">Title, location, dates and requirements come from the employer's ${esc(c.ats)} feed.${j.inferred.length?` Inferred by the platform: ${esc(j.inferred.join("; "))}.`:""}</div></div>
+   <div class="meta"><label class="sub" for="prio">My priority</label><select id="prio" data-prio="${j.id}"><option value="HIGH" ${state.prio[j.id]==='HIGH'?"selected":""}>High</option><option value="NORMAL" ${!state.prio[j.id]||state.prio[j.id]==='NORMAL'?"selected":""}>Normal</option><option value="LOW" ${state.prio[j.id]==='LOW'?"selected":""}>Low</option></select></div>
+   <div class="meta"><button class="btn primary" data-apply="${j.id}">Open on ${esc(c.n)} careers ↗</button><button class="btn ${state.saved.has(j.id)||a?"on":""}" data-save="${j.id}">${a?"Tracking · "+a.st:state.saved.has(j.id)?"Saved":"Save"}</button></div>
+   <div class="sub">Nothing is submitted for you. Drafts of short answers are generated only from your résumé and are never invented.</div></div>`;
+}
+
+/* ---------- rendering + events ---------- */
+function render(){
+  $("#side").innerHTML=`<div class="brand"><span class="logo"><svg viewBox="0 0 24 24"><path d="M4 17l5-5 4 4 7-8M15 8h5v5"/></svg></span>Job Intel</div>`+
+   NAV.map(([k,l,p])=>`<button class="nav" data-view="${k}" ${state.view===k?'aria-current="page"':""}><svg viewBox="0 0 24 24"><path d="${p}"/></svg>${l}${k==="fresh"?`<span class="n">${state.newIds.size}</span>`:""}</button>`).join("")+
+   `<div class="sidefoot"><span>Signed in as you@example.edu</span><button class="btn sm" id="theme">Toggle theme</button></div>`;
+  $("#title").textContent=VIEWS[state.view][0]; $("#content").innerHTML=VIEWS[state.view][1](); drawer();
+  if(state.view==="alerts")previewAlert();
+}
+function previewAlert(){const m=+$("#am").value;const l=$("#al").value;$("#amv").textContent=m;$("#apv").textContent="Would match "+visible().filter(j=>j.fit>=m&&(l==="Any"||j.lvl===l)).length+" of your current open jobs."}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-view],[data-open],[data-close],[data-tog],[data-save],[data-apply],[data-runsave],[data-delsave],[data-savesearch],#theme");if(!t)return;
+  if(t.dataset.runsave!==undefined){state.q=state.saves[+t.dataset.runsave].q;render()}
+  else if(t.dataset.delsave!==undefined){state.saves.splice(+t.dataset.delsave,1);render()}
+  else if(t.dataset.savesearch!==undefined){state.saves.unshift({name:state.q.trim().slice(0,40),q:state.q.trim()});toast("Search saved.");render()}
+  else if(t.dataset.view){state.view=t.dataset.view;state.sel=null;state.newIds.clear&&t.dataset.view==="fresh"&&state.newIds.clear();render()}
+  else if(t.dataset.open){state.sel=+t.dataset.open;state.newIds.delete(state.sel);drawer()}
+  else if("close" in t.dataset){state.sel=null;drawer()}
+  else if(t.dataset.tog){const a=ALERTS.find(x=>x.id==t.dataset.tog);a.on=!a.on;render()}
+  else if(t.dataset.save){const id=+t.dataset.save;if(!APPS[id]){state.saved.has(id)?state.saved.delete(id):state.saved.add(id);if(state.saved.has(id))toast("Saved. You'll be told if the employer changes the deadline or location.")}drawer()}
+  else if(t.dataset.apply){const id=+t.dataset.apply;if(!APPS[id]){APPS[id]={st:"Applied",ref:"",next:""};toast("Marked as applied. Finish the application on the employer's site.")}else toast("In the real app this opens the employer's careers page.");drawer()}
+  else if(t.id==="theme"){const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark"}
+});
+document.addEventListener("input",e=>{
+  const id=e.target.id; if(id==="q"){state.q=e.target.value;const p=e.target.selectionStart;$("#content").innerHTML=jobsView();const q=$("#q");q.focus();q.setSelectionRange(p,p)}
+  else if(id==="am"||id==="al")previewAlert();
+});
+document.addEventListener("change",e=>{
+  const t=e.target; if(["lvl","role","mode"].includes(t.id)){state[t.id]=t.value;render()} else if(t.id==="min"){state.min=+t.value;render()}
+  else if(t.dataset.prio){state.prio[t.dataset.prio]=t.value;toast(t.value==="NORMAL"?"Priority reset.":"Marked "+t.value.toLowerCase()+" priority and saved.");if(t.value!=="NORMAL")state.saved.add(+t.dataset.prio);render()}
+  else if(t.dataset.move){APPS[t.dataset.move].st=t.value;toast("Moved to "+t.value);render()}
+});
+document.addEventListener("submit",e=>{
+  if(e.target.id!=="newAlert")return;e.preventDefault();
+  const ch=[...e.target.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);
+  if(!ch.length){toast("Pick at least one channel.");return}
+  ALERTS.unshift({id:Date.now(),name:$("#an").value||"Untitled alert",on:true,min:+$("#am").value,lvl:$("#al").value,chan:ch,freq:$("#af").value,sent:0});toast("Alert created.");render();
+});
+$("#sim").addEventListener("click",()=>{
+  const id=100+JOBS.length, fit=90+Math.floor(Math.random()*8);
+  const nj=J(id,"northwind","Quantitative Developer Intern, Execution","Chicago, IL","Internship","Quant Developer",0,fit,"Summer 2027","Onsite",["C++","Python","Linux"],["Role matches your target: Quant Developer","Skills overlap: C++, Python, Linux","Location Chicago is on your list","Posted just now"],[],"Nov 21","$11,500 / month",[]);
+  JOBS.unshift(nj);state.newIds.add(id);render();
+  const hit=ALERTS.filter(a=>a.on&&fit>=a.min);
+  toast(hit.length?`Alert sent via ${[...new Set(hit.flatMap(a=>a.chan))].join(", ")}: ${COMP.northwind.n} just opened a ${fit}-fit role.`:"New role found; no alert matched.");
+});
+render();
+</script>
+</body></html>

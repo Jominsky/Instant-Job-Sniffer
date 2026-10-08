@@ -1,0 +1,527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users & profile ----------
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  calendarTokenHash String? @unique   // sha256 of the secret in the subscribable calendar URL
+  name         String?
+  createdAt    DateTime @default(now())
+
+  profile       Profile?
+  resumes       Resume[]
+  applications  Application[]
+  savedJobs     SavedJob[]
+  watchlists    Watchlist[]
+  alerts        Alert[]
+  contacts      Contact[]
+  companyLists  CompanyList[]
+  savedSearches SavedSearch[]
+  savedAnswers  SavedAnswer[]
+}
+
+model Profile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills                String[]
+  languages             String[]
+  technologies          String[]
+  majors                String[]
+  graduationYear        Int?
+  preferredRoles        String[]
+  preferredLocations    String[]
+  preferredCompanies    String[]
+  preferredIndustries   String[]
+  targetSeason          String   @default("Summer")
+  targetYear            Int      @default(2027)
+  sponsorshipRequired   Boolean  @default(false)
+  keywords              String[]
+  excludedKeywords      String[]
+  minCompensation       Int?
+  weightRoleRelevance   Int      @default(30)
+  weightExperienceElig  Int      @default(20)
+  weightSkillsMatch     Int      @default(20)
+  weightCompanyPref     Int      @default(10)
+  weightLocationPref    Int      @default(10)
+  weightResumeSimilarity Int     @default(10)
+  exclusionRules        String[] @default([])
+  updatedAt             DateTime @updatedAt
+}
+
+model Resume {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String
+  fileUrl       String?
+  extractedText String?  @db.Text
+  skills        String[]
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  applications  Application[]
+}
+
+// ---------- Companies ----------
+enum CompanyCategory {
+  BIG_TECH
+  QUANT
+  HEDGE_FUND
+  PROP_TRADING
+  FINTECH
+  FORTUNE_500
+  STARTUP
+  HEALTHCARE
+  FINANCE
+  OTHER
+}
+
+enum CompanyPriority {
+  P0
+  P1
+  P2
+  P3
+}
+
+enum AtsProvider {
+  GREENHOUSE
+  LEVER
+  ASHBY
+  WORKDAY
+  SMARTRECRUITERS
+  JOBVITE
+  ICIMS
+  SUCCESSFACTORS
+  GENERIC_CAREERS_PAGE
+  RSS_FEED
+  UNKNOWN
+}
+
+model Company {
+  id                    String          @id @default(cuid())
+  name                  String
+  slug                  String          @unique
+  logoUrl               String?
+  website               String?
+  careersUrl            String?
+  atsProvider           AtsProvider     @default(UNKNOWN)
+  atsIdentifier         String?
+  industry              String?
+  category              CompanyCategory @default(OTHER)
+  priority              CompanyPriority @default(P2)
+  isActive              Boolean         @default(true)
+  lastCheckedAt         DateTime?
+  lastSuccessfulScanAt  DateTime?
+  consecutiveFailures   Int             @default(0)
+  openMatchingJobsCount Int             @default(0)
+  totalJobsDiscovered   Int             @default(0)
+  notes                 String?         @db.Text
+  tags                  String[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  jobs            Job[]
+  scanRuns        ScanRun[]
+  contacts        Contact[]
+  listMemberships CompanyListMember[]
+
+  @@index([priority])
+  @@index([isActive, lastCheckedAt])
+  @@index([category])
+}
+
+model CompanyList {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isBuiltIn   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  members     CompanyListMember[]
+}
+
+model CompanyListMember {
+  id            String      @id @default(cuid())
+  companyListId String
+  companyList   CompanyList @relation(fields: [companyListId], references: [id], onDelete: Cascade)
+  companyId     String
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyListId, companyId])
+}
+
+// ---------- Jobs ----------
+enum ExperienceLevel {
+  INTERNSHIP
+  NEW_GRAD
+  ENTRY_LEVEL
+  EXPERIENCED
+  UNKNOWN
+}
+
+enum RoleCategory {
+  SWE
+  BACKEND
+  FRONTEND
+  FULL_STACK
+  INFRASTRUCTURE
+  DISTRIBUTED_SYSTEMS
+  ML_AI
+  DATA_ENGINEERING
+  QUANT_DEVELOPER
+  QUANT_RESEARCH
+  QUANT_TRADING
+  DEVOPS_SRE
+  SECURITY
+  PRODUCT
+  OTHER
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ON_SITE
+  UNKNOWN
+}
+
+enum PostingStatus {
+  OPEN
+  POSSIBLY_CLOSED
+  CLOSED
+  APPLICATION_REMOVED
+}
+
+// Where a piece of data came from (never present AI inference as employer-stated)
+enum DataProvenance {
+  OFFICIAL_COMPANY_PAGE
+  ATS
+  SEARCH_DISCOVERY
+  AI_INFERENCE
+  USER_INPUT
+}
+
+model Job {
+  id                      String          @id @default(cuid())
+  companyId               String
+  company                 Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title                   String
+  normalizedTitle         String
+  location                String?
+  workMode                WorkMode        @default(UNKNOWN)
+  experienceLevel         ExperienceLevel @default(UNKNOWN)
+  roleCategory            RoleCategory    @default(OTHER)
+  department              String?
+  description             String          @db.Text
+  qualifications          String?         @db.Text
+  preferredQualifications String?         @db.Text
+  technologies            String[]
+  compensationMin         Int?
+  compensationMax         Int?
+  compensationRaw         String?
+  compensationPeriod      String?   // HOUR | MONTH | WEEK | YEAR: the unit compensationMin/Max are in (null on rows stored before this existed: those are annual)
+  compensationAnnualMax   Int?      // max pay annualised, for sorting only
+  applicationUrl          String
+  sourceUrl               String
+  ats                     AtsProvider
+  source                  String
+  externalJobId           String
+  dedupeKey               String
+  datePosted              DateTime?
+  firstDiscoveredAt       DateTime        @default(now())
+  lastObservedAt          DateTime        @default(now())
+  lastUpdatedAt           DateTime        @default(now())
+  applicationDeadline     DateTime?
+
+  targetSeason            String?
+  targetYear              Int?
+  seasonProvenance        DataProvenance  @default(AI_INFERENCE)
+  classificationProvenance DataProvenance @default(AI_INFERENCE)
+  graduationRequirement   String?
+  citizenshipRequirement  String?
+  sponsorshipInfo         String?
+  schoolYearRequirement   String?
+
+  fitScore                Int?
+  fitExplanation          Json?
+  concerns                Json?
+  urgencyScore            Int?
+  isExcluded              Boolean         @default(false)
+  exclusionReasons        String[]
+
+  status                  PostingStatus   @default(OPEN)
+  postingHash             String
+  version                 Int             @default(1)
+  isReposted              Boolean         @default(false)
+  reopenedAt              DateTime?
+  closedAt                DateTime?
+  missedScans             Int             @default(0)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  sources      JobSource[]
+  versions     JobVersion[]
+  applications Application[]
+  savedBy      SavedJob[]
+
+  @@unique([companyId, ats, externalJobId])
+  @@index([dedupeKey])
+  @@index([companyId])
+  @@index([datePosted])
+  @@index([firstDiscoveredAt])
+  @@index([status])
+  @@index([roleCategory])
+  @@index([fitScore])
+  @@index([normalizedTitle])
+  @@index([isExcluded])
+}
+
+model JobSource {
+  id            String      @id @default(cuid())
+  jobId         String
+  job           Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  ats           AtsProvider
+  source        String
+  externalJobId String
+  url           String
+  isPrimary     Boolean     @default(false)
+  discoveredAt  DateTime    @default(now())
+
+  @@unique([jobId, source, externalJobId])
+}
+
+model JobVersion {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  version     Int
+  snapshot    Json
+  diff        Json?
+  postingHash String
+  capturedAt  DateTime @default(now())
+
+  @@index([jobId])
+}
+
+// ---------- Applications / CRM ----------
+enum ApplicationStatus {
+  DISCOVERED
+  INTERESTED
+  SAVED
+  APPLYING
+  APPLIED
+  OA_RECEIVED
+  OA_COMPLETED
+  RECRUITER_SCREEN
+  TECHNICAL_INTERVIEW
+  FINAL_ROUND
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+model Application {
+  id                      String            @id @default(cuid())
+  userId                  String
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId                   String
+  job                     Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status                  ApplicationStatus @default(DISCOVERED)
+  dateDiscovered          DateTime          @default(now())
+  dateApplied             DateTime?
+  resumeId                String?
+  resume                  Resume?           @relation(fields: [resumeId], references: [id])
+  referral                Boolean           @default(false)
+  referralContactId       String?
+  recruiter               String?
+  applicationEmail        String?
+  applicationAccountEmail String?
+  oaDeadline              DateTime?
+  interviewDates          DateTime[]
+  notes                   String?           @db.Text
+  followUpDate            DateTime?
+  result                  String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  statusHistory           ApplicationStatusChange[]
+
+  @@unique([userId, jobId])
+  @@index([status])
+}
+
+// Every status transition, so funnel metrics ("ever reached OA / interview / offer") are accurate.
+model ApplicationStatusChange {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  status        ApplicationStatus
+  at            DateTime          @default(now())
+
+  @@index([applicationId])
+}
+
+model SavedJob {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId         String
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  notInterested Boolean  @default(false)
+  priority      String   @default("NORMAL") // the user's own ranking of this job: HIGH | NORMAL | LOW
+  createdAt     DateTime @default(now())
+
+  @@unique([userId, jobId])
+}
+
+model Contact {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId            String?
+  company              Company?  @relation(fields: [companyId], references: [id])
+  name                 String
+  position             String?
+  linkedinUrl          String?
+  email                String?
+  phone                String?
+  alumniConnection     Boolean   @default(false)
+  schoolConnection     Boolean   @default(false)
+  fraternityConnection Boolean   @default(false)
+  referralRequested    Boolean   @default(false)
+  referralReceived     Boolean   @default(false)
+  lastContactedAt      DateTime?
+  notes                String?   @db.Text
+  createdAt            DateTime  @default(now())
+}
+
+// ---------- Watchlists / alerts / search (schema ready; UI in Phase 2) ----------
+model Watchlist {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  filterJson Json
+  createdAt  DateTime @default(now())
+  alerts     Alert[]
+}
+
+enum NotificationChannel {
+  EMAIL
+  BROWSER
+  PUSH
+  SMS
+  DISCORD
+  SLACK
+}
+
+enum DigestFrequency {
+  IMMEDIATE
+  HOURLY
+  MORNING
+  EVENING
+}
+
+model Alert {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  watchlistId String?
+  watchlist   Watchlist?            @relation(fields: [watchlistId], references: [id])
+  name        String
+  ruleJson    Json
+  channels    NotificationChannel[]
+  frequency   DigestFrequency       @default(IMMEDIATE)
+  isActive    Boolean               @default(true)
+  lastDigestAt DateTime?
+  createdAt   DateTime              @default(now())
+  events      AlertEvent[]
+}
+
+model AlertEvent {
+  id             String    @id @default(cuid())
+  alertId        String
+  alert          Alert     @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  jobId          String
+  reason         String    @default("new") // new | reopened | reposted
+  status         String    @default("PENDING") // PENDING | SENT | FAILED
+  attempts       Int       @default(0)
+  createdAt      DateTime  @default(now())
+  deliveredAt    DateTime?
+  channelResults Json?
+
+  // One event per (alert, job): this is what prevents duplicate notifications.
+  @@unique([alertId, jobId])
+  @@index([status])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  jobId     String?
+  alertId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+}
+
+// Reusable answers to common application questions ("Why this company?", work authorisation, availability...). Never sent anywhere automatically.
+model SavedAnswer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question  String
+  answer    String   @db.Text
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SavedSearch {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  query      String?
+  filterJson Json?
+  createdAt  DateTime @default(now())
+}
+
+// ---------- Ingestion ----------
+enum ScanStatus {
+  RUNNING
+  SUCCESS
+  FAILURE
+}
+
+model ScanRun {
+  id           String     @id @default(cuid())
+  companyId    String
+  company      Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  connector    String
+  status       ScanStatus @default(RUNNING)
+  jobsFound    Int        @default(0)
+  jobsNew      Int        @default(0)
+  jobsUpdated  Int        @default(0)
+  jobsClosed   Int        @default(0)
+  errorMessage String?    @db.Text
+  startedAt    DateTime   @default(now())
+  finishedAt   DateTime?
+
+  @@index([companyId])
+  @@index([status])
+  @@index([startedAt])
+}
